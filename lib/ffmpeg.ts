@@ -49,7 +49,7 @@ export function signedUrlToGcsUri(signedUrl: string): string {
   }
 }
 
-export async function concatenateVideos(gcsVideoUris: string[], speachAudioFiles: string[], withVoiceOver: boolean, mood: string): Promise<any> {
+export async function concatenateVideos(gcsVideoUris: string[], speachAudioFiles: string[], withVoiceOver: boolean, mood: string): Promise<string> {
   console.log(`Concatenate all videos`);
   console.log(mood);
   const id = uuidv4();

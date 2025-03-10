@@ -1,4 +1,4 @@
-// import { Storage, GetSignedUrlConfig } from '@google-cloud/storage';
+import { Storage, GetSignedUrlConfig } from '@google-cloud/storage';
 import ffmpeg from 'fluent-ffmpeg';
 import { FfprobeData } from 'fluent-ffmpeg';
 import * as fs from 'fs';
@@ -49,7 +49,7 @@ export function signedUrlToGcsUri(signedUrl: string): string {
   }
 }
 
-export async function concatenateVideos(gcsVideoUris: string[], speachAudioFiles: string[], withVoiceOver: boolean, mood: string): Promise<string> {
+export async function concatenateVideos(gcsVideoUris: string[], speachAudioFiles: string[], withVoiceOver: boolean, mood: string): Promise<any> {
   console.log(`Concatenate all videos`);
   console.log(mood);
   const id = uuidv4();
@@ -103,7 +103,6 @@ export async function concatenateVideos(gcsVideoUris: string[], speachAudioFiles
     console.log(`Concatenate videos using FFmpeg`);
 
     const outputPath = path.join(tempDir, outputFileName);
-    console.log("fd---->", outputPath, concatenationList);
 
     await new Promise<void>((resolve, reject) => {
       ffmpeg()
@@ -138,25 +137,26 @@ export async function concatenateVideos(gcsVideoUris: string[], speachAudioFiles
 
     const publicFile = path.join(publicDir, outputFileNameWithVoiceover);
     fs.copyFileSync(finalOutputPath, publicFile);
-    const url = outputFileNameWithVoiceover;
-    // // Upload result to GCS
-    // console.log(`Upload result to GCS`);
-    // const bucket = storage.bucket('svc-demo-vertex-us');
-    // await bucket
-    //   .upload(finalOutputPath, {
-    //     destination: outputFileName,
-    //     metadata: {
-    //       contentType: 'video/mp4',
-    //     },
-    //   });
-    // const file = bucket.file(outputFileName);
-    // // Generate a signed URL (as explained in the previous response)
-    // const options: GetSignedUrlConfig = {
-    //   version: 'v4',
-    //   action: 'read', // Change this to the desired action
-    //   expires: Date.now() + 60 * 60 * 1000, // 1 hour expiration
-    // };
-    // const [url] = await file.getSignedUrl(options);
+    const localVideoName = outputFileNameWithVoiceover;
+    // Upload result to GCS
+    console.log(`Upload result to GCS`);
+    const storage = new Storage();
+    const bucket = storage.bucket('svc-demo-vertex-us-publicis');
+    await bucket
+      .upload(finalOutputPath, {
+        destination: outputFileName,
+        metadata: {
+          contentType: 'video/mp4',
+        },
+      });
+    const file = bucket.file(outputFileName);
+    // Generate a signed URL (as explained in the previous response)
+    const options: GetSignedUrlConfig = {
+      version: 'v4',
+      action: 'read', // Change this to the desired action
+      expires: Date.now() + 60 * 60 * 1000, // 1 hour expiration
+    };
+    const [url] = await file.getSignedUrl(options);
     console.log('url:', url);
     return url;
   } finally {

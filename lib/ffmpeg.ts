@@ -101,7 +101,10 @@ export async function concatenateVideos(gcsVideoUris: string[], speachAudioFiles
 
     // Concatenate videos using FFmpeg
     console.log(`Concatenate videos using FFmpeg`);
+
     const outputPath = path.join(tempDir, outputFileName);
+    console.log("fd---->", outputPath, concatenationList);
+
     await new Promise<void>((resolve, reject) => {
       ffmpeg()
         .input(concatenationList)

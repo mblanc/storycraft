@@ -16,6 +16,7 @@ interface SceneDataProps {
     voiceover: string;
     imageBase64?: string;
     videoUri?: string | Promise<string>;
+    videoUrl?: string | Promise<string>;
   };
   sceneNumber: number;
   onUpdate: (updatedScene: SceneDataProps['scene']) => void;
@@ -41,11 +42,11 @@ export function SceneData({
   useEffect(() => {
     const getVideoUrl = async () => {
         console.log('Video URL change!')
-        if (typeof scene.videoUri === 'string') {
-          setVideoUrl(scene.videoUri);
-        } else if (scene.videoUri instanceof Promise) {
+        if (typeof scene.videoUrl === 'string') {
+          setVideoUrl(scene.videoUrl);
+        } else if (scene.videoUrl instanceof Promise) {
           try {
-            const resolvedUrl = await scene.videoUri;
+            const resolvedUrl = await scene.videoUrl;
             setVideoUrl(resolvedUrl);
           } catch (error) {
             console.error('Error resolving video URL:', error);
@@ -57,7 +58,7 @@ export function SceneData({
     }
 
     getVideoUrl();
-  }, [scene.videoUri]);
+  }, [scene.videoUrl]);
   
   const handleUploadClick = () => {
     fileInputRef.current?.click()

@@ -58,7 +58,7 @@ export default function Home() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isSlideshowOpen, setIsSlideshowOpen] = useState(false)
   const [isScenarioOpen, setScenarioOpen] = useState(false)
-  const [videoUrl, setVideoUri] = useState<string | null>(null)
+  const [videoUrl, setVideoUrl] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<string>("storyboard")
 
   const FALLBACK_URL = "https://videos.pexels.com/video-files/3042473/3042473-sd_426_240_30fps.mp4"
@@ -152,13 +152,13 @@ export default function Home() {
           withVoiceOver,
         );
         if (result.success) {
-          setVideoUri(result.videoUrl)
+          setVideoUrl(result.videoUrl)
         } else {
-          setVideoUri(FALLBACK_URL)
+          setVideoUrl(FALLBACK_URL)
         }
       } else {
         setErrorMessage("All scenes should have a generated video")
-        setVideoUri(FALLBACK_URL)
+        setVideoUrl(FALLBACK_URL)
       }
     } catch (error) {
       console.error("Error generating video:", error)
@@ -183,9 +183,11 @@ export default function Home() {
           });
 
           const { success, videoUrls, error } = await response.json();
-
+          const res = videoUrls[0]
           if (success) {
-            return { ...scene, videoUri: videoUrls[0]['fileName'] || FALLBACK_URL, videoUrl: videoUrls[0]['url'] || FALLBACK_URL };
+            const newScene = { ...scene, videoUri: res['fileName'] || FALLBACK_URL, videoUrl: res['url'] || FALLBACK_URL }
+            console.log(newScene)
+            return newScene;
           } else {
             throw new Error(error);
           }

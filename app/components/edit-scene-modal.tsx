@@ -17,6 +17,7 @@ interface EditSceneModalProps {
     voiceover: string;
     imageBase64?: string;
     videoUri?: string | Promise<string>;
+    videoUrl?: string | Promise<string>;
   };
   sceneNumber: number;
   onUpdate: (updatedScene: EditSceneModalProps['scene']) => void;
@@ -32,11 +33,11 @@ export function EditSceneModal({ isOpen, onClose, scene, sceneNumber, onUpdate }
     
   useEffect(() => {
     const getVideoUrl = async () => {
-        if (typeof scene.videoUri === 'string') {
-          setVideoUrl(scene.videoUri);
-        } else if (scene.videoUri instanceof Promise) {
+        if (typeof scene.videoUrl === 'string') {
+          setVideoUrl(scene.videoUrl);
+        } else if (scene.videoUrl instanceof Promise) {
           try {
-            const resolvedUrl = await scene.videoUri;
+            const resolvedUrl = await scene.videoUrl;
             setVideoUrl(resolvedUrl);
           } catch (error) {
             console.error('Error resolving video URL:', error);

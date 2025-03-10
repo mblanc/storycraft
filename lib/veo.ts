@@ -111,7 +111,7 @@ export async function generateSceneVideo(prompt: string, imageBase64: string): P
               },
             ],
             parameters: {
-              storageUri: "gs://mb-cloud-llm-preview1-bucket/img2vid/",
+              storageUri: "gs://svc-demo-vertex-us-publicis/img2vid/",
               sampleCount: 1,
               aspectRatio: "16:9"
             },

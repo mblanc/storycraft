@@ -137,7 +137,7 @@ export async function concatenateVideos(gcsVideoUris: string[], speachAudioFiles
 
     const publicFile = path.join(publicDir, outputFileNameWithVoiceover);
     fs.copyFileSync(finalOutputPath, publicFile);
-    const localVideoName = outputFileNameWithVoiceover;
+    // const localVideoName = outputFileNameWithVoiceover;
     // Upload result to GCS
     console.log(`Upload result to GCS`);
     const storage = new Storage();

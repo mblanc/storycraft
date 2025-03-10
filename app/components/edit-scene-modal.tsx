@@ -47,7 +47,7 @@ export function EditSceneModal({ isOpen, onClose, scene, sceneNumber, onUpdate }
     }
 
     getVideoUrl();
-  }, [scene.videoUri]);
+  }, [scene.videoUrl]);
   
   const handleSave = () => {
     onUpdate(editedScene)

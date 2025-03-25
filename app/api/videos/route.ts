@@ -55,7 +55,7 @@ export async function POST(req: Request): Promise<Response> {
         console.log(`Operation started for scene ${index + 1}`);
         
         const generateVideoResponse = await waitForOperation(operationName);
-        console.log(`Video generation completed for scene ${index + 1}`);
+        console.log(`Video generation completed for scene ${index + 1} ${JSON.stringify(generateVideoResponse.response)}`);
         
         const gcsUri = generateVideoResponse.response.generatedSamples[0].video.uri;
         const [bucketName, ...pathSegments] = gcsUri.replace("gs://", "").split("/");

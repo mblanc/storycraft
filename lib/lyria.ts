@@ -60,7 +60,8 @@ export async function generateMusicRest(prompt: string): Promise<string> {
       )
       // Check if the response was successful
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const responseText = await response.text();
+        throw new Error(`HTTP error! status: ${response.status} -- Response: ${responseText}`);
       }
       const jsonResult = await response.json(); // Parse as JSON
       const audioContent = jsonResult.predictions[0].bytesBase64Encoded;

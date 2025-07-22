@@ -12,41 +12,30 @@ const storage = new Storage();
 // Assuming you're using Google Cloud Text-to-Speech:
 const client = new textToSpeech.TextToSpeechClient();
 
-export async function tts(text: string, language: string, voiceName?: string): Promise<string> {
+export async function tts(text: string, language: string): Promise<string> {
   const listVoicesRequest: protos.google.cloud.texttospeech.v1.IListVoicesRequest = {
     languageCode: language,
   };
   const [response] = await client.listVoices(listVoicesRequest);
-  let selectedVoiceName: string | null | undefined;
-  if (voiceName) {
-    selectedVoiceName = voiceName;
-  } else {
-    selectedVoiceName = 'Algenib'
-  }
-  
-  // If no voice is specified, use the default selection logic
-  if (selectedVoiceName && response.voices) {
-    // choose the voice with the name that contains the selected voice
-    const voice = response.voices.find((voice) => voice.name?.includes(selectedVoiceName!));
-    if (voice) {
-      selectedVoiceName = voice.name;
-    } else {
-      const charonVoice = response.voices.find((voice) => voice.name?.includes('Charon'));
-      if (charonVoice) {
-        selectedVoiceName = charonVoice.name;
-      } else {
-        console.error('No voices found for language:', language);
-        throw new Error('No voices found for language');
-      }
+  let voiceName;
+  //find the voice name that contains the voice string
+  if (response.voices) {
+    // choose the voice with the name that contains Algenib
+    voiceName = response.voices.find((voice) => voice.name?.includes('Algenib'))?.name;
+    // if no voice is found, choose the voice with the name that contains Charon
+    if (!voiceName) {
+      voiceName = response.voices.find((voice) => voice.name?.includes('Charon'))?.name;
     }
+  } else {
+    console.error('No voices found for language:', language);
+    throw new Error('No voices found for language');
   }
-  
-  console.log('Using voice:', selectedVoiceName);
+  console.log(voiceName);
   const request = {
     input: { text },
     voice: {
       languageCode: language,
-      name: selectedVoiceName,
+      name: voiceName,
     },
     audioConfig: {
       audioEncoding: protos.google.cloud.texttospeech.v1.AudioEncoding.MP3

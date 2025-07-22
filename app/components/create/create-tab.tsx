@@ -1,18 +1,21 @@
-'use client'
+"use client";
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import { BookOpen, Loader2 } from 'lucide-react'
-import { type Language } from '../../types'
-import { StyleSelector, type Style } from "./style-selector"
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { BookOpen, Loader2 } from "lucide-react";
+import { type Language } from "../../types";
+import { StyleSelector } from "./style-selector";
+import { type Style } from "@/lib/projectStorage";
+import { CustomStyleModal } from "./custom-style-modal";
+import { useState } from "react";
 
 const LANGUAGES: Language[] = [
   { name: "Arabic (Generic)", code: "ar-XA" },
@@ -48,22 +51,26 @@ const LANGUAGES: Language[] = [
   { name: "Turkish (Turkey)", code: "tr-TR" },
   { name: "Ukrainian (Ukraine)", code: "uk-UA" },
   { name: "Urdu (India)", code: "ur-IN" },
-  { name: "Vietnamese (Vietnam)", code: "vi-VN" }
+  { name: "Vietnamese (Vietnam)", code: "vi-VN" },
 ];
 
 interface CreateTabProps {
-  pitch: string
-  setPitch: (pitch: string) => void
-  numScenes: number
-  setNumScenes: (num: number) => void
-  style: string
-  setStyle: (style: string) => void
-  language: Language
-  setLanguage: (language: Language) => void
-  isLoading: boolean
-  errorMessage: string | null
-  onGenerate: () => Promise<void>
-  styles: Style[]
+  pitch: string;
+  setPitch: (pitch: string) => void;
+  numScenes: number;
+  setNumScenes: (num: number) => void;
+  style: string;
+  setStyle: (style: string) => void;
+  language: Language;
+  setLanguage: (language: Language) => void;
+  isLoading: boolean;
+  errorMessage: string | null;
+  onGenerate: () => Promise<void>;
+  styles: Style[];
+  customStyles: Style[];
+  onAddCustomStyle: (style: Style) => void;
+  onRemoveCustomStyle: (styleName: string) => void;
+  sessionId: string;
 }
 
 export function CreateTab({
@@ -79,13 +86,18 @@ export function CreateTab({
   errorMessage,
   onGenerate,
   styles,
+  customStyles,
+  onAddCustomStyle,
+  onRemoveCustomStyle,
+  sessionId,
 }: CreateTabProps) {
+  const [isCustomStyleModalOpen, setIsCustomStyleModalOpen] = useState(false);
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
         <Button
           onClick={onGenerate}
-          disabled={isLoading || pitch.trim() === ''}
+          disabled={isLoading || pitch.trim() === ""}
           className="bg-primary text-primary-foreground hover:bg-primary/90"
         >
           {isLoading ? (
@@ -96,16 +108,17 @@ export function CreateTab({
           ) : (
             <>
               <BookOpen className="mr-2 h-4 w-4" />
-              Generate Scenario with Gemini 2.5 Flash
+              Generate Scenario with Gemini 2.5 Pro
             </>
           )}
         </Button>
       </div>
-      <div className='max-w-xl mx-auto '>
+      <div className="max-w-xl mx-auto ">
         <div className="space-y-2">
           <h2 className="text-xl font-semibold">Enter your story pitch</h2>
           <p className="text-muted-foreground">
-            Describe your story idea and we&apos;ll generate a complete storyboard with scenes, descriptions, and voiceover text.
+            Describe your story idea and we&apos;ll generate a complete
+            storyboard with scenes, descriptions, and voiceover text.
           </p>
         </div>
         <div className="space-y-4">
@@ -114,7 +127,8 @@ export function CreateTab({
             onChange={(e) => setPitch(e.target.value)}
             placeholder="Once upon a time..."
             className="min-h-[100px]"
-            rows={4} />
+            rows={4}
+          />
           <div className="flex items-center space-x-2">
             <label htmlFor="language" className="text-sm font-medium">
               Language:
@@ -122,7 +136,9 @@ export function CreateTab({
             <Select
               value={language.code}
               onValueChange={(code) => {
-                const selectedLanguage = LANGUAGES.find(lang => lang.code === code);
+                const selectedLanguage = LANGUAGES.find(
+                  (lang) => lang.code === code
+                );
                 if (selectedLanguage) {
                   setLanguage(selectedLanguage);
                 }
@@ -152,12 +168,23 @@ export function CreateTab({
               min="1"
               max="8"
               value={numScenes}
-              onChange={(e) => setNumScenes(Math.max(1, Math.min(20, parseInt(e.target.value) || 1)))}
+              onChange={(e) =>
+                setNumScenes(
+                  Math.max(1, Math.min(20, parseInt(e.target.value) || 1))
+                )
+              }
               className="w-20"
             />
           </div>
           <div className="space-y-2">
-            <StyleSelector styles={styles} onSelect={setStyle} />
+            <StyleSelector
+              styles={styles}
+              customStyles={customStyles}
+              onSelect={setStyle}
+              onAddCustomStyle={() => setIsCustomStyleModalOpen(true)}
+              onRemoveCustomStyle={onRemoveCustomStyle}
+              selectedStyle={style}
+            />
           </div>
           <div className="flex items-center space-x-2">
             <label htmlFor="style" className="text-sm font-medium">
@@ -177,6 +204,13 @@ export function CreateTab({
           )}
         </div>
       </div>
+
+      <CustomStyleModal
+        isOpen={isCustomStyleModalOpen}
+        onClose={() => setIsCustomStyleModalOpen(false)}
+        onStyleAdd={onAddCustomStyle}
+        sessionId={sessionId}
+      />
     </div>
-  )
-} 
+  );
+}

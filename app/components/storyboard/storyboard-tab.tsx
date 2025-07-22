@@ -1,25 +1,35 @@
-'use client'
+"use client";
 
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
-import { Grid, List, Loader2, Presentation, Video, ChevronLeft, ChevronRight } from 'lucide-react'
-import { useState } from 'react'
-import { Scene } from "../../types"
-import { SceneData } from './scene-data'
-import { GcsImage } from '../ui/gcs-image'
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import {
+  Grid,
+  List,
+  Loader2,
+  Presentation,
+  Video,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
+import { useState } from "react";
+import { Scene } from "../../types";
+import { SceneData } from "./scene-data";
+import { GcsImage } from "../ui/gcs-image";
 
-type ViewMode = 'grid' | 'list' | 'slideshow'
+type ViewMode = "grid" | "list" | "slideshow";
 
 interface StoryboardTabProps {
-  scenes: Scene[]
-  isVideoLoading: boolean
-  generatingScenes: Set<number>
-  errorMessage: string | null
-  onGenerateAllVideos: () => Promise<void>
-  onUpdateScene: (index: number, updatedScene: Scene) => void
-  onRegenerateImage: (index: number) => Promise<void>
-  onGenerateVideo: (index: number) => Promise<void>
-  onUploadImage: (index: number, file: File) => Promise<void>
+  scenes: Scene[];
+  isVideoLoading: boolean;
+  generatingScenes: Set<number>;
+  errorMessage: string | null;
+  selectedVeoModel: string;
+  onGenerateAllVideos: () => Promise<void>;
+  onUpdateScene: (index: number, updatedScene: Scene) => void;
+  onRegenerateImage: (index: number, imagePrompt?: string) => Promise<void>;
+  onGenerateVideo: (index: number) => Promise<void>;
+  onUploadImage: (index: number, file: File) => Promise<void>;
+  onVeoModelChange: (model: string) => void;
 }
 
 export function StoryboardTab({
@@ -27,18 +37,25 @@ export function StoryboardTab({
   isVideoLoading,
   generatingScenes,
   errorMessage,
+  selectedVeoModel,
   onGenerateAllVideos,
   onUpdateScene,
   onRegenerateImage,
   onGenerateVideo,
   onUploadImage,
+  onVeoModelChange,
 }: StoryboardTabProps) {
-  const [viewMode, setViewMode] = useState<ViewMode>('grid')
-  const [currentSlide, setCurrentSlide] = useState(0)
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  const veoModels = [
+    { name: "Veo 3", value: "veo-3.0-generate-preview" },
+    { name: "Veo 2", value: "veo-2.0-generate-001" },
+  ];
 
   const renderScenes = () => {
     switch (viewMode) {
-      case 'grid':
+      case "grid":
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {scenes.map((scene, index) => (
@@ -47,15 +64,17 @@ export function StoryboardTab({
                 sceneNumber={index + 1}
                 scene={scene}
                 onUpdate={(updatedScene) => onUpdateScene(index, updatedScene)}
-                onRegenerateImage={() => onRegenerateImage(index)}
+                onRegenerateImage={(imagePrompt?: string) =>
+                  onRegenerateImage(index, imagePrompt)
+                }
                 onGenerateVideo={() => onGenerateVideo(index)}
                 onUploadImage={(file) => onUploadImage(index, file)}
                 isGenerating={generatingScenes.has(index)}
               />
             ))}
           </div>
-        )
-      case 'list':
+        );
+      case "list":
         return (
           <div className="space-y-6">
             {scenes.map((scene, index) => (
@@ -64,8 +83,12 @@ export function StoryboardTab({
                   <SceneData
                     sceneNumber={index + 1}
                     scene={scene}
-                    onUpdate={(updatedScene) => onUpdateScene(index, updatedScene)}
-                    onRegenerateImage={() => onRegenerateImage(index)}
+                    onUpdate={(updatedScene) =>
+                      onUpdateScene(index, updatedScene)
+                    }
+                    onRegenerateImage={(imagePrompt?: string) =>
+                      onRegenerateImage(index, imagePrompt)
+                    }
                     onGenerateVideo={() => onGenerateVideo(index)}
                     onUploadImage={(file) => onUploadImage(index, file)}
                     isGenerating={generatingScenes.has(index)}
@@ -74,19 +97,33 @@ export function StoryboardTab({
                 </div>
                 <div className="w-2/3">
                   <div className="p-4 bg-card rounded-lg border h-full">
-                    <h3 className="font-semibold mb-4 text-card-foreground">Scene {index + 1}</h3>
+                    <h3 className="font-semibold mb-4 text-card-foreground">
+                      Scene {index + 1}
+                    </h3>
                     <div className="space-y-4">
                       <div>
-                        <h4 className="text-sm font-medium text-card-foreground mb-1">Image Prompt</h4>
-                        <p className="text-sm text-card-foreground/80">{scene.imagePrompt}</p>
+                        <h4 className="text-sm font-medium text-card-foreground mb-1">
+                          Image Prompt
+                        </h4>
+                        <p className="text-sm text-card-foreground/80">
+                          {scene.imagePrompt}
+                        </p>
                       </div>
                       <div>
-                        <h4 className="text-sm font-medium text-card-foreground mb-1">Video Prompt</h4>
-                        <p className="text-sm text-card-foreground/80">{scene.videoPrompt}</p>
+                        <h4 className="text-sm font-medium text-card-foreground mb-1">
+                          Video Prompt
+                        </h4>
+                        <p className="text-sm text-card-foreground/80">
+                          {scene.videoPrompt}
+                        </p>
                       </div>
                       <div>
-                        <h4 className="text-sm font-medium text-card-foreground mb-1">Voiceover</h4>
-                        <p className="text-sm text-card-foreground/80">{scene.voiceover}</p>
+                        <h4 className="text-sm font-medium text-card-foreground mb-1">
+                          Voiceover
+                        </h4>
+                        <p className="text-sm text-card-foreground/80">
+                          {scene.voiceover}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -94,15 +131,15 @@ export function StoryboardTab({
               </div>
             ))}
           </div>
-        )
-      case 'slideshow':
-        if (scenes.length === 0) return null
+        );
+      case "slideshow":
+        if (scenes.length === 0) return null;
         const goToPrevious = () => {
-          setCurrentSlide((prev) => (prev > 0 ? prev - 1 : scenes.length - 1))
-        }
+          setCurrentSlide((prev) => (prev > 0 ? prev - 1 : scenes.length - 1));
+        };
         const goToNext = () => {
-          setCurrentSlide((prev) => (prev < scenes.length - 1 ? prev + 1 : 0))
-        }
+          setCurrentSlide((prev) => (prev < scenes.length - 1 ? prev + 1 : 0));
+        };
         return (
           <div className="relative max-w-4xl mx-auto">
             <div className="aspect-video relative bg-black rounded-lg overflow-hidden max-h-[60vh] group">
@@ -136,7 +173,9 @@ export function StoryboardTab({
                     onClick={() => setCurrentSlide(index)}
                     className={cn(
                       "w-3 h-3 rounded-full transition-colors",
-                      currentSlide === index ? "bg-white" : "bg-white/50 hover:bg-white/75"
+                      currentSlide === index
+                        ? "bg-white"
+                        : "bg-white/50 hover:bg-white/75"
                     )}
                     aria-label={`Go to scene ${index + 1}`}
                   />
@@ -145,23 +184,33 @@ export function StoryboardTab({
             </div>
             <div className="mt-4 space-y-4">
               <div className="p-4 bg-card rounded-lg border">
-                <h3 className="font-semibold mb-2 text-card-foreground">Scene {currentSlide + 1}</h3>
+                <h3 className="font-semibold mb-2 text-card-foreground">
+                  Scene {currentSlide + 1}
+                </h3>
                 <div className="space-y-4">
                   <div>
-                    <h4 className="text-sm font-medium text-card-foreground mb-1">Image Prompt</h4>
-                    <p className="text-sm text-card-foreground/80">{scenes[currentSlide].imagePrompt}</p>
+                    <h4 className="text-sm font-medium text-card-foreground mb-1">
+                      Image Prompt
+                    </h4>
+                    <p className="text-sm text-card-foreground/80">
+                      {scenes[currentSlide].imagePrompt}
+                    </p>
                   </div>
                   <div>
-                    <h4 className="text-sm font-medium text-card-foreground mb-1">Voiceover</h4>
-                    <p className="text-sm text-card-foreground/80">{scenes[currentSlide].voiceover}</p>
+                    <h4 className="text-sm font-medium text-card-foreground mb-1">
+                      Voiceover
+                    </h4>
+                    <p className="text-sm text-card-foreground/80">
+                      {scenes[currentSlide].voiceover}
+                    </p>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-        )
+        );
     }
-  }
+  };
 
   return (
     <div className="space-y-8">
@@ -170,10 +219,10 @@ export function StoryboardTab({
           <Button
             variant="outline"
             size="icon"
-            onClick={() => setViewMode('grid')}
+            onClick={() => setViewMode("grid")}
             className={cn(
               "hover:bg-accent hover:text-accent-foreground",
-              viewMode === 'grid' && "bg-accent text-accent-foreground"
+              viewMode === "grid" && "bg-accent text-accent-foreground"
             )}
           >
             <Grid className="h-4 w-4" />
@@ -182,10 +231,10 @@ export function StoryboardTab({
           <Button
             variant="outline"
             size="icon"
-            onClick={() => setViewMode('list')}
+            onClick={() => setViewMode("list")}
             className={cn(
               "hover:bg-accent hover:text-accent-foreground",
-              viewMode === 'list' && "bg-accent text-accent-foreground"
+              viewMode === "list" && "bg-accent text-accent-foreground"
             )}
           >
             <List className="h-4 w-4" />
@@ -194,33 +243,37 @@ export function StoryboardTab({
           <Button
             variant="outline"
             size="icon"
-            onClick={() => setViewMode('slideshow')}
+            onClick={() => setViewMode("slideshow")}
             className={cn(
               "hover:bg-accent hover:text-accent-foreground",
-              viewMode === 'slideshow' && "bg-accent text-accent-foreground"
+              viewMode === "slideshow" && "bg-accent text-accent-foreground"
             )}
           >
             <Presentation className="h-4 w-4" />
             <span className="sr-only">Slideshow view</span>
           </Button>
         </div>
-        <Button
-          onClick={onGenerateAllVideos}
-          disabled={isVideoLoading || scenes.length === 0 || generatingScenes.size > 0}
-          className="bg-primary text-primary-foreground hover:bg-primary/90"
-        >
-          {isVideoLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Generating Videos...
-            </>
-          ) : (
-            <>
-              <Video className="mr-2 h-4 w-4" />
-              Generate Videos with Veo 3.0
-            </>
-          )}
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            onClick={onGenerateAllVideos}
+            disabled={
+              isVideoLoading || scenes.length === 0 || generatingScenes.size > 0
+            }
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            {isVideoLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Generating Videos...
+              </>
+            ) : (
+              <>
+                <Video className="mr-2 h-4 w-4" />
+                Generate Videos
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       {renderScenes()}
@@ -231,5 +284,5 @@ export function StoryboardTab({
         </div>
       )}
     </div>
-  )
-} 
+  );
+}

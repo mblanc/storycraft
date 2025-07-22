@@ -16,8 +16,13 @@ export interface Scenario {
   music: string;
   musicUrl?: string;
   language: Language;
-  characters: Array<{ name: string, description: string, imageGcsUri?: string }>;
-  settings: Array<{ name: string, description: string }>;
+  characters: Array<{
+    id: string;
+    name: string;
+    description: string;
+    imageGcsUri?: string;
+  }>;
+  settings: Array<{ id?: string; name: string; description: string }>;
   logoOverlay?: string;
   scenes: Scene[];
 }
@@ -25,23 +30,23 @@ export interface Scenario {
 export interface Language {
   name: string;
   code: string;
-} 
+}
 
 export interface TimelineLayer {
-  id: string
-  name: string
-  type: 'video' | 'voiceover' | 'music'
-  items: TimelineItem[]
+  id: string;
+  name: string;
+  type: "video" | "voiceover" | "music";
+  items: TimelineItem[];
 }
 
 export interface TimelineItem {
-  id: string
-  startTime: number
-  duration: number
-  content: string // URL for video/music/voiceover
-  type: 'video' | 'voiceover' | 'music'
+  id: string;
+  startTime: number;
+  duration: number;
+  content: string; // URL for video/music/voiceover
+  type: "video" | "voiceover" | "music";
   metadata?: {
-    logoOverlay?: string
-    [key: string]: any // Allow for additional metadata fields
-  }
+    logoOverlay?: string;
+    [key: string]: any; // Allow for additional metadata fields
+  };
 }

@@ -1,360 +1,282 @@
-'use client'
+"use client";
 
-import { Stepper } from "@/components/ui/stepper"
-import { BookOpen, Film, LayoutGrid, PenLine, Scissors } from 'lucide-react'
-import Image from 'next/image'
-import { useEffect, useState } from 'react'
-import { generateScenes, generateStoryboard } from './actions/generate-scenes'
-import { editVideo, exportMovieAction } from './actions/generate-video'
-import { regenerateImage, regenerateCharacterImage } from './actions/regenerate-image'
-import { resizeImage } from './actions/resize-image'
-import { saveImageToPublic } from './actions/upload-image'
-import { CreateTab } from './components/create/create-tab'
-import { ScenarioTab } from "./components/scenario/scenario-tab"
-import { StoryboardTab } from './components/storyboard/storyboard-tab'
-import { type Style } from "./components/create/style-selector"
-import { VideoTab } from './components/video/video-tab'
-import { Scenario, Scene, type Language, TimelineLayer } from './types'
-import { EditorTab } from './components/editor/editor-tab'
-import { generateMusic } from "./actions/generate-music"
-import { generateVoiceover } from "./actions/generate-voiceover"
-import { Voice } from './components/editor/voice-selection-dialog'
-
-const styles: Style[] = [
-  { name: "Photographic", image: "/styles/cinematic.jpg" },
-  { name: "2D Animation", image: "/styles/2d.jpg" },
-  { name: "Anime", image: "/styles/anime.jpg" },
-  { name: "3D Animation", image: "/styles/3d.jpg" },
-  { name: "Claymation Animation", image: "/styles/claymation.jpg" },
-]
+import { Stepper } from "@/components/ui/stepper";
+import {
+  BookOpen,
+  Film,
+  LayoutGrid,
+  PenLine,
+  Scissors,
+  Loader2,
+} from "lucide-react";
+import Image from "next/image";
+import { useEffect, useState } from "react";
+import { generateScenes, generateStoryboard } from "./actions/generate-scenes";
+import { exportMovieAction } from "./actions/generate-video";
+import { regenerateImage } from "./actions/regenerate-image";
+import { resizeImage } from "./actions/resize-image";
+import { saveImageToPublic } from "./actions/upload-image";
+import { CreateTab } from "./components/create/create-tab";
+import { ScenarioTab } from "./components/scenario/scenario-tab";
+import { StoryboardTab } from "./components/storyboard/storyboard-tab";
+import { type Style } from "@/lib/projectStorage";
+import { VideoTab } from "./components/video/video-tab";
+import { Scenario, Scene, type Language, TimelineLayer } from "./types";
+import { EditorTab } from "./components/editor/editor-tab";
+import { generateMusic } from "./actions/generate-music";
+import { generateVoiceover } from "./actions/generate-voiceover";
+import { useProjectState } from "@/hooks/useProjectState";
+import { getInitialTab } from "@/lib/projectStorage";
+import { ClearProjectButton } from "@/components/ClearProjectButton";
 
 const DEFAULT_LANGUAGE: Language = {
   name: "English (United States)",
-  code: "en-US"
+  code: "en-US",
 };
 
 export default function Home() {
-  const [pitch, setPitch] = useState('')
-  const [style, setStyle] = useState('Photographic')
-  const [language, setLanguage] = useState<Language>(DEFAULT_LANGUAGE)
-  const [logoOverlay, setLogoOverlay] = useState<string | null>(null)
-  const [isUploading, setIsUploading] = useState(false);
-  const [numScenes, setNumScenes] = useState(6)
-  const [isLoading, setIsLoading] = useState(false)
-  const [withVoiceOver, setWithVoiceOver] = useState(false)
-  const [isVideoLoading, setIsVideoLoading] = useState(false)
-  const [scenario, setScenario] = useState<Scenario>()
-  const [scenes, setScenes] = useState<Array<Scene>>([])
-  const [generatingScenes, setGeneratingScenes] = useState<Set<number>>(new Set());
-  const [generatingCharacterImages, setGeneratingCharacterImages] = useState<Set<number>>(new Set());
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [videoUri, setVideoUri] = useState<string | null>(null)
-  const [vttUri, setVttUri] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<string>("create")
-  const [currentTime, setCurrentTime] = useState(0)
-  const [isGeneratingMusic, setIsGeneratingMusic] = useState(false)
-  const [isGeneratingVoiceover, setIsGeneratingVoiceover] = useState(false)
-  const [selectedVoice, setSelectedVoice] = useState<Voice | null>(null)
-  const FALLBACK_URL = "https://videos.pexels.com/video-files/4276282/4276282-hd_1920_1080_25fps.mp4"
+  // Persistent state management
+  const { state, updateState, clearProject, isLoaded } = useProjectState();
 
-  useEffect(() => {
-    console.log("generatingScenes (in useEffect):", generatingScenes);
-  }, [generatingScenes]); // Log only when generatingScenes changes
+  // Transient state (not persisted)
+  const [isLoading, setIsLoading] = useState(false);
+  const [isVideoLoading, setIsVideoLoading] = useState(false);
+  const [generatingScenes, setGeneratingScenes] = useState<Set<number>>(
+    new Set()
+  );
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [isGeneratingMusic, setIsGeneratingMusic] = useState(false);
+  const [isGeneratingVoiceover, setIsGeneratingVoiceover] = useState(false);
+  const FALLBACK_URL =
+    "https://videos.pexels.com/video-files/4276282/4276282-hd_1920_1080_25fps.mp4";
 
-  const handleGenerate = async () => {
-    if (pitch.trim() === '' || numScenes < 1) return
-    setIsLoading(true)
-    setErrorMessage(null)
-    try {
-      const scenario = await generateScenes(pitch, numScenes, style, language)
-      setScenario(scenario)
-      if (logoOverlay) {
-        scenario.logoOverlay = logoOverlay
-      }
-      setScenes(scenario.scenes)
-      setActiveTab("scenario") // Switch to scenario tab after successful generation
-    } catch (error) {
-      console.error('Error generating scenes:', error)
-      setErrorMessage(error instanceof Error ? error.message : 'An unknown error occurred while generating scenes')
-      setScenes([]) // Clear any partially generated scenes
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  // Convenience getters for persistent state (with defaults)
+  const pitch = state?.pitch || "";
+  const style = state?.style || "Photographic";
+  const language = state?.language || DEFAULT_LANGUAGE;
+  const logoOverlay = state?.logoOverlay || null;
+  const numScenes = state?.numScenes || 6;
+  const customStyles = state?.customStyles || [];
+  const selectedVeoModel =
+    state?.selectedVeoModel || process.env.NEXT_PUBLIC_MODEL!;
+  const scenario = state?.scenario;
+  const scenes = state?.scenes || [];
+  const videoUri = state?.videoUri || null;
+  const vttUri = state?.vttUri || null;
+  const activeTab = state?.activeTab || getInitialTab(state);
 
-  const handleRegenerateImage = async (index: number) => {
-    setGeneratingScenes(prev => new Set([...prev, index]));
-    setErrorMessage(null)
-    try {
-      // Regenerate a single image
-      const scene = scenes[index]
-      const { imageGcsUri } = await regenerateImage(scene.imagePrompt)
-      const updatedScenes = [...scenes]
-      updatedScenes[index] = { ...scene, imageGcsUri, videoUri: undefined }
-      console.log(updatedScenes)
-      setScenes(updatedScenes)
-    } catch (error) {
-      console.error("Error regenerating images:", error)
-      setErrorMessage(`Failed to regenerate image(s): ${error instanceof Error ? error.message : "Unknown error"}`)
-    } finally {
-      setGeneratingScenes(prev => {
-        const updated = new Set(prev);
-        updated.delete(index); // Remove index from generatingScenes
-        return updated;
-      });
-    }
-  }
+  // Default styles
+  const defaultStyles: Style[] = [
+    { name: "Photographic", image: "/styles/cinematic.jpg" },
+    { name: "2D Animation", image: "/styles/2d.jpg" },
+    { name: "Anime", image: "/styles/anime.jpg" },
+    { name: "3D Animation", image: "/styles/3d.jpg" },
+    { name: "Claymation Animation", image: "/styles/claymation.jpg" },
+  ];
 
-  const handleRegenerateCharacterImage = async (characterIndex: number, description: string) => {
-    if (!scenario) return;
-    
-    setGeneratingCharacterImages(prev => new Set([...prev, characterIndex]));
-    setErrorMessage(null)
-    try {
-      // Regenerate character image using the updated description
-      const { imageGcsUri } = await regenerateCharacterImage(`${style}: ${description}`);
-      
-      // Update the character with the new image AND the updated description
-      const updatedCharacters = [...scenario.characters];
-      updatedCharacters[characterIndex] = {
-        ...updatedCharacters[characterIndex],
-        description: description, // Preserve the updated description
-        imageGcsUri
-      };
-      
-      const updatedScenario = {
-        ...scenario,
-        characters: updatedCharacters
-      };
-      
-      setScenario(updatedScenario);
-    } catch (error) {
-      console.error("Error regenerating character image:", error)
-      setErrorMessage(`Failed to regenerate character image: ${error instanceof Error ? error.message : "Unknown error"}`)
-    } finally {
-      setGeneratingCharacterImages(prev => {
-        const updated = new Set(prev);
-        updated.delete(characterIndex);
-        return updated;
-      });
-    }
-  }
-
-  const handleEditVideo = async () => {
-    setIsVideoLoading(true)
-    setErrorMessage(null)
-    try {
-      console.log('Edit Video');
-      console.log(withVoiceOver);
-      if (scenario && scenes.every((scene) => typeof scene.videoUri === 'string')) {
-        const result = await editVideo(
-          await Promise.all(
-            scenes.map(async (scene) => {
-              return {
-                voiceover: scene.voiceover,
-                videoUri: scene.videoUri,
-              };
-            })
-          ),
-          scenario.mood,
-          withVoiceOver,
-          scenario.language,
-          scenario.logoOverlay,
-          selectedVoice?.name
-        );
-        if (result.success) {
-          setVideoUri(result.videoUrl)
-          setVttUri(result.vttUrl || null)
-        } else {
-          setVideoUri(FALLBACK_URL)
-          setVttUri(null)
-        }
-      } else {
-        setErrorMessage("All scenes should have a generated video")
-        setVideoUri(FALLBACK_URL)
-        setVttUri(null)
-      }
-    } catch (error) {
-      console.error("Error generating video:", error)
-      setErrorMessage(error instanceof Error ? error.message : "An unknown error occurred while generating video")
-      setVttUri(null)
-    } finally {
-      setIsVideoLoading(false)
-    }
-  }
-
-  const handleExportMovie = async (layers: TimelineLayer[]) => {
-    setIsVideoLoading(true)
-    setErrorMessage(null)
-    try {
-      console.log('Export Movie');
-      console.log(layers)
-      const result = await exportMovieAction(
-        layers
-      );
-      if (result.success) {
-        setVideoUri(result.videoUrl)
-        setVttUri(result.vttUrl || null)
-        setActiveTab("video")
-      } else {
-        setVideoUri(FALLBACK_URL)
-        setVttUri(null)
-      }
-    } catch (error) {
-      console.error("Error generating video:", error)
-      setErrorMessage(error instanceof Error ? error.message : "An unknown error occurred while generating video")
-      setVttUri(null)
-    } finally {
-      setIsVideoLoading(false)
-    }
-  }
-
-  const handleGenerateAllVideos = async () => {
-    setErrorMessage(null);
-    console.log("[Client] Generating videos for all scenes - START");
-    setGeneratingScenes(new Set(scenes.map((_, i) => i)));
-
-    const regeneratedScenes = await Promise.all(
-      scenes.map(async (scene) => {
-        try {
-          const response = await fetch('/api/videos', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ scenes: [scene], language: scenario?.language }),
-          });
-
-          const { success, videoUrls, error } = await response.json();
-
-          if (success) {
-            return { ...scene, videoUri: videoUrls[0] || FALLBACK_URL };
-          } else {
-            throw new Error(error);
-          }
-        } catch (error) {
-          console.error("Error regenerating video:", error);
-          return { ...scene, videoUri: FALLBACK_URL }; // Use fallback on error
-        }
-      })
-    );
-
-    setScenes(regeneratedScenes);
-    if (scenario) {
-      setScenario({
-        ...scenario,
-        scenes: regeneratedScenes
-      });
-    }
-    setGeneratingScenes(new Set());
-    setActiveTab("editor")
+  // Custom style management
+  const handleAddCustomStyle = (newStyle: Style) => {
+    const updatedCustomStyles = [...customStyles, newStyle];
+    updateState({ customStyles: updatedCustomStyles });
   };
 
-  const handleGenerateVoiceover = async (voice?: Voice) => {
-    if (!scenario) return
-    setIsGeneratingVoiceover(true)
-    setErrorMessage(null)
+  const handleRemoveCustomStyle = (styleName: string) => {
+    const updatedCustomStyles = customStyles.filter(
+      (s) => s.name !== styleName
+    );
+    updateState({ customStyles: updatedCustomStyles });
+    // If the removed style was selected, reset to default
+    if (style === styleName) {
+      updateState({ style: "Photographic" });
+    }
+  };
+
+  useEffect(() => {}, [generatingScenes]); // Log only when generatingScenes changes
+
+  // Show loading until state is loaded - this must come after all hooks
+  if (!isLoaded) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  const handleGenerate = async () => {
+    if (pitch.trim() === "" || numScenes < 1) return;
+    setIsLoading(true);
+    setErrorMessage(null);
     try {
-      // Set the selected voice for future video generation
-      if (voice) {
-        setSelectedVoice(voice)
+      const newScenario = await generateScenes(
+        pitch,
+        numScenes,
+        style,
+        language
+      );
+      if (logoOverlay) {
+        newScenario.logoOverlay = logoOverlay;
       }
-      
-      const scenesVoiceovers = scenario.scenes.map((scene) => ({
-        voiceover: scene.voiceover
-      }))
-      const voiceoverAudioUrls = await generateVoiceover(scenesVoiceovers, scenario.language, voice?.name)
+      updateState({
+        scenario: newScenario,
+        scenes: newScenario.scenes,
+        activeTab: "scenario",
+      });
+    } catch (error) {
+      console.error("Error generating scenes:", error);
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "An unknown error occurred while generating scenes"
+      );
+      updateState({ scenes: [] }); // Clear any partially generated scenes
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRegenerateImage = async (index: number, imagePrompt?: string) => {
+    setGeneratingScenes((prev) => new Set([...prev, index]));
+    setErrorMessage(null);
+    try {
+      // Regenerate a single image
+      const scene = scenes[index];
+      // Use provided imagePrompt or fall back to current scene's imagePrompt
+      const promptToUse = imagePrompt || scene.imagePrompt;
+
+      console.log(
+        `🔄 Regenerating scene ${index + 1} image and clearing video`
+      );
+
+      const { imageGcsUri } = await regenerateImage(promptToUse, style);
+      const updatedScenes = [...scenes];
+      updatedScenes[index] = {
+        ...scene,
+        imagePrompt: promptToUse, // Save the updated prompt
+        imageGcsUri,
+        videoUri: undefined, // Explicitly clear video
+      };
+
+      console.log(`✅ Scene ${index + 1} image updated, video cleared`);
+      console.log(updatedScenes);
+      updateState({ scenes: updatedScenes });
+    } catch (error) {
+      console.error("Error regenerating images:", error);
+      setErrorMessage(
+        `Failed to regenerate scene ${index + 1}. Please try again.`
+      );
+    } finally {
+      setGeneratingScenes((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(index);
+        return newSet;
+      });
+    }
+  };
+
+  const handleExportMovie = async (layers: TimelineLayer[]) => {
+    setIsVideoLoading(true);
+    setErrorMessage(null);
+    try {
+      console.log("Export Movie");
+      console.log(layers);
+      const result = await exportMovieAction(layers);
+      if (result.success) {
+        updateState({
+          videoUri: result.videoUrl,
+          vttUri: result.vttUrl || null,
+          activeTab: "video",
+        });
+      } else {
+        updateState({
+          videoUri: FALLBACK_URL,
+          vttUri: null,
+        });
+      }
+    } catch (error) {
+      console.error("Error generating video:", error);
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "An unknown error occurred while generating video"
+      );
+      updateState({ vttUri: null });
+    } finally {
+      setIsVideoLoading(false);
+    }
+  };
+
+  const handleGenerateAllVideos = async () => {
+    if (scenes.length === 0) return;
+    setErrorMessage(null);
+
+    try {
+      setIsVideoLoading(true);
+      const response = await fetch("/api/videos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scenes: scenes.filter((s) => s.imageGcsUri),
+          selectedVeoModel: selectedVeoModel,
+        }),
+      });
+
+      const { success, videoUrls, error } = await response.json();
+      console.log("success", success);
+      console.log("videoUrls", videoUrls);
+
+      if (!success) {
+        throw new Error(error || "Failed to generate videos");
+      }
+
+      // Update all scenes with their corresponding video URLs
       const updatedScenes = scenes.map((scene, index) => ({
         ...scene,
-        voiceoverAudioUri: voiceoverAudioUrls[index]
-      }))
-      setScenes(updatedScenes)
-      setScenario({
-        ...scenario,
-        scenes: updatedScenes // Update scenario with the new scenes that include voiceover URLs
-      })
-    } catch (error) {
-      console.error('Error generating voiceover:', error)
-      setErrorMessage(error instanceof Error ? error.message : 'An unknown error occurred while generating voiceover')
-    } finally {
-      setIsGeneratingVoiceover(false)
-    }
-  }
+        videoUri: videoUrls[index] || FALLBACK_URL,
+      }));
 
-  const handleGenerateMusic = async (musicParams?: { description: string }) => {
-    if (!scenario) return
-    setIsGeneratingMusic(true)
-    setErrorMessage(null)
-    try {
-      // Update scenario with new music description if provided
-      let updatedScenario = scenario
-      if (musicParams) {
-        updatedScenario = {
-          ...scenario,
-          music: musicParams.description
-        }
-        setScenario(updatedScenario)
-      }
-      
-      const musicUrl = await generateMusic(updatedScenario.music)
-      const finalScenario = {
-        ...updatedScenario,
-        musicUrl: musicUrl
-      }
-      setScenario(finalScenario)
-      console.log(musicUrl)
+      updateState({
+        scenes: updatedScenes,
+        scenario: scenario ? { ...scenario, scenes: updatedScenes } : scenario,
+        activeTab: "editor", // Auto-redirect to editor tab after videos are generated
+      });
     } catch (error) {
-      console.error('Error generating music:', error)
-      setErrorMessage(error instanceof Error ? error.message : 'An unknown error occurred while generating music')
+      console.error("[Client] Error generating videos:", error);
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "An unknown error occurred while generating videos"
+      );
     } finally {
-      setIsGeneratingMusic(false)
+      setIsVideoLoading(false);
     }
-  }
-
-  const handleGenerateStoryBoard = async () => {
-    console.log("Generating storyboard");
-
-    if (!scenario) return
-    setIsLoading(true)
-    setErrorMessage(null)
-    try {
-      const scenarioWithStoryboard = await generateStoryboard(scenario, numScenes, style, language)
-      setScenario(scenarioWithStoryboard)
-      setScenes(scenarioWithStoryboard.scenes)
-      setActiveTab("storyboard") // Switch to storyboard tab after successful generation
-    } catch (error) {
-      console.error('Error generating storyboard:', error)
-      setErrorMessage(error instanceof Error ? error.message : 'An unknown error occurred while generating storyboard')
-      setScenes([]) // Clear any partially generated scenes
-      setActiveTab("scenario") // Stay on scenario tab if there's an error
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  };
 
   const handleGenerateVideo = async (index: number) => {
     setErrorMessage(null);
     try {
       // Single scene generation logic remains the same
-      setGeneratingScenes(prev => new Set([...prev, index]));
+      setGeneratingScenes((prev) => new Set([...prev, index]));
       const scene = scenes[index];
-      console.log('scene', scene);
+      console.log("scene", scene);
 
-      const response = await fetch('/api/videos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scenes: [scene] }),
+      const response = await fetch("/api/videos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scenes: [scene],
+          selectedVeoModel: selectedVeoModel,
+        }),
       });
 
       const { success, videoUrls } = await response.json();
       const videoUri = success ? videoUrls[0] : FALLBACK_URL;
-      const updatedScenes = [...scenes]
-      updatedScenes[index] = { ...updatedScenes[index], videoUri }
-      setScenes(updatedScenes)
-      if (scenario) {
-        setScenario({
-          ...scenario,
-          scenes: updatedScenes
-        });
-      }
+      const updatedScenes = [...scenes];
+      updatedScenes[index] = { ...updatedScenes[index], videoUri };
+      updateState({
+        scenes: updatedScenes,
+        scenario: scenario ? { ...scenario, scenes: updatedScenes } : scenario,
+      });
     } catch (error) {
       console.error("[Client] Error generating video:", error);
       setErrorMessage(
@@ -364,12 +286,13 @@ export default function Home() {
       );
 
       const videoUri = FALLBACK_URL;
-      setScenes(prevScenes =>
-        prevScenes.map((s, i) => (i === index ? { ...s, videoUri } : s))
+      const updatedScenes = scenes.map((s, i) =>
+        i === index ? { ...s, videoUri } : s
       );
+      updateState({ scenes: updatedScenes });
     } finally {
       console.log(`[Client] Generating video done`);
-      setGeneratingScenes(prev => {
+      setGeneratingScenes((prev) => {
         const updated = new Set(prev);
         updated.delete(index); // Remove index from generatingScenes
         return updated;
@@ -377,51 +300,147 @@ export default function Home() {
     }
   };
 
+  const handleGenerateVoiceover = async () => {
+    if (!scenario) return;
+    setIsGeneratingVoiceover(true);
+    setErrorMessage(null);
+    try {
+      const scenesVoiceovers = scenario.scenes.map((scene) => ({
+        voiceover: scene.voiceover,
+      }));
+      const voiceoverAudioUrls = await generateVoiceover(
+        scenesVoiceovers,
+        scenario.language
+      );
+      const updatedScenes = scenes.map((scene, index) => ({
+        ...scene,
+        voiceoverAudioUri: voiceoverAudioUrls[index],
+      }));
+      updateState({
+        scenes: updatedScenes,
+        scenario: scenario ? { ...scenario, scenes: updatedScenes } : scenario,
+      });
+    } catch (error) {
+      console.error("Error generating voiceover:", error);
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "An unknown error occurred while generating voiceover"
+      );
+    } finally {
+      setIsGeneratingVoiceover(false);
+    }
+  };
+
+  const handleGenerateMusic = async () => {
+    if (!scenario) return;
+    setIsGeneratingMusic(true);
+    setErrorMessage(null);
+    try {
+      const musicUrl = await generateMusic(scenario?.music);
+      const updatedScenario = {
+        ...scenario,
+        musicUrl: musicUrl,
+      };
+      updateState({ scenario: updatedScenario });
+      console.log(musicUrl);
+    } catch (error) {
+      console.error("Error generating music:", error);
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "An unknown error occurred while generating music"
+      );
+    } finally {
+      setIsGeneratingMusic(false);
+    }
+  };
+
+  const handleGenerateStoryBoard = async () => {
+    if (!scenario) return;
+    console.log(
+      "Generating storyboard with scenario characters:",
+      scenario.characters
+    );
+    setIsLoading(true);
+    setErrorMessage(null);
+    try {
+      const scenarioWithStoryboard = await generateStoryboard(
+        scenario,
+        numScenes,
+        style,
+        language
+      );
+      updateState({
+        scenario: scenarioWithStoryboard,
+        scenes: scenarioWithStoryboard.scenes,
+        activeTab: "storyboard",
+      });
+    } catch (error) {
+      console.error("Error generating storyboard:", error);
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "An unknown error occurred while generating storyboard"
+      );
+      updateState({ scenes: [], activeTab: "scenario" }); // Clear scenes and stay on scenario tab
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleUpdateScene = (index: number, updatedScene: Scene) => {
-    const newScenes = [...scenes]
-    newScenes[index] = updatedScene
-    setScenes(newScenes)
+    const newScenes = [...scenes];
+    newScenes[index] = updatedScene;
+    updateState({ scenes: newScenes });
   };
 
   const handleUploadImage = async (index: number, file: File) => {
-    setErrorMessage(null)
+    setErrorMessage(null);
     try {
-      const reader = new FileReader()
+      console.log(
+        `📤 Uploading new image for scene ${index + 1} and clearing video`
+      );
+
+      const reader = new FileReader();
       reader.onloadend = async () => {
-        const base64String = reader.result as string
-        const imageBase64 = base64String.split(",")[1] // Remove the data URL prefix
+        const base64String = reader.result as string;
+        const imageBase64 = base64String.split(",")[1]; // Remove the data URL prefix
         const resizedImageGcsUri = await resizeImage(imageBase64);
-        const updatedScenes = [...scenes]
-        updatedScenes[index] = { ...updatedScenes[index], imageGcsUri: resizedImageGcsUri, videoUri: undefined }
-        setScenes(updatedScenes)
-      }
+        const updatedScenes = [...scenes];
+        updatedScenes[index] = {
+          ...updatedScenes[index],
+          imageGcsUri: resizedImageGcsUri,
+          videoUri: undefined, // Explicitly clear video
+        };
+
+        console.log(`✅ Scene ${index + 1} image uploaded, video cleared`);
+        updateState({ scenes: updatedScenes });
+      };
       reader.onerror = () => {
-        throw new Error("Failed to read the image file")
-      }
-      reader.readAsDataURL(file)
+        throw new Error("Failed to read the image file");
+      };
+      reader.readAsDataURL(file);
     } catch (error) {
-      console.error("Error uploading image:", error)
-      setErrorMessage(error instanceof Error ? error.message : "An unknown error occurred while uploading the image")
+      console.error("Error uploading image:", error);
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "An unknown error occurred while uploading the image"
+      );
     }
-  }
+  };
 
   const handleLogoRemove = () => {
-    setLogoOverlay(null);
-
-    // Also remove logoOverlay from scenario if it exists
-    if (scenario) {
-      setScenario({
-        ...scenario,
-        logoOverlay: undefined
-      });
-    }
-  }
+    updateState({
+      logoOverlay: null,
+      scenario: scenario ? { ...scenario, logoOverlay: undefined } : scenario,
+    });
+  };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    setIsUploading(true);
 
     try {
       // Convert file to base64 string
@@ -431,20 +450,13 @@ export default function Home() {
       const imagePath = await saveImageToPublic(base64String, file.name);
 
       // Update state with the path to the saved image
-      console.log(imagePath)
-      setLogoOverlay(imagePath);
-
-      // Update scenario's logoOverlay if it exists
-      if (scenario) {
-        setScenario({
-          ...scenario,
-          logoOverlay: imagePath
-        });
-      }
+      console.log(imagePath);
+      updateState({
+        logoOverlay: imagePath,
+        scenario: scenario ? { ...scenario, logoOverlay: imagePath } : scenario,
+      });
     } catch (error) {
       console.error("Error uploading logo:", error);
-    } finally {
-      setIsUploading(false);
     }
   };
 
@@ -458,112 +470,122 @@ export default function Home() {
     });
   };
 
-  console.log("Component rendered");
-
   const steps = [
     {
       id: "create",
       label: "Create",
-      icon: PenLine
+      icon: PenLine,
     },
     {
       id: "scenario",
       label: "Scenario",
       icon: BookOpen,
-      disabled: !scenario
+      disabled: !scenario,
     },
     {
       id: "storyboard",
       label: "Storyboard",
       icon: LayoutGrid,
-      disabled: !scenario
+      disabled: !scenario,
     },
     {
       id: "editor",
       label: "Editor",
       icon: Scissors,
-      disabled: !scenario || !scenes.every(scene => typeof scene.videoUri === 'string')
+      disabled:
+        !scenario ||
+        !scenes.every((scene) => typeof scene.videoUri === "string"),
     },
     {
       id: "video",
       label: "Video",
       icon: Film,
-      disabled: !scenario || !scenes.every(scene => typeof scene.videoUri === 'string')
-    }
-  ]
+      disabled:
+        !scenario ||
+        !scenes.every((scene) => typeof scene.videoUri === "string"),
+    },
+  ];
 
   const handleScenarioUpdate = (updatedScenario: Scenario) => {
-    setScenario(updatedScenario);
+    console.log(
+      "handleScenarioUpdate called with characters:",
+      updatedScenario.characters
+    );
+    updateState({ scenario: updatedScenario });
   };
 
-  const handleRemoveVoiceover = (sceneIndex: number) => {
-    if (!scenario) return;
-    
-    // Create updated scenes with voiceover removed from the specific scene
-    const updatedScenes = scenario.scenes.map((scene, index) => {
-      if (index === sceneIndex) {
-        return {
-          ...scene,
-          voiceoverAudioUri: undefined
-        };
-      }
-      return scene;
-    });
-    
-    // Update both scenes and scenario
-    setScenes(updatedScenes);
-    setScenario({
-      ...scenario,
-      scenes: updatedScenes
-    });
+  // Helper functions for component props
+  const handleTabChange = (tabId: string) => {
+    updateState({ activeTab: tabId });
   };
 
-  const handleRemoveMusic = () => {
-    if (!scenario) return;
-    
-    // Remove music from scenario
-    setScenario({
-      ...scenario,
-      musicUrl: undefined
-    });
+  const handlePitchChange = (newPitch: string) => {
+    updateState({ pitch: newPitch });
+  };
+
+  const handleNumScenesChange = (newNumScenes: number) => {
+    updateState({ numScenes: newNumScenes });
+  };
+
+  const handleStyleChange = (newStyle: string) => {
+    updateState({ style: newStyle });
+  };
+
+  const handleLanguageChange = (newLanguage: Language) => {
+    updateState({ language: newLanguage });
+  };
+
+  const handleLogoOverlayChange = (newLogoOverlay: string | null) => {
+    updateState({ logoOverlay: newLogoOverlay });
+  };
+
+  const handleVeoModelChange = (newVeoModel: string) => {
+    updateState({ selectedVeoModel: newVeoModel });
   };
 
   return (
     <main className="container mx-auto p-8 min-h-screen bg-background flex flex-col">
-      <div className="flex items-center justify-center gap-2 mb-8">
-        <Image
-          src="/logo5.png"
-          alt="Storycraft"
-          width={32}
-          height={32}
-          className="h-8"
-        />
-        <h1 className="text-3xl font-bold text-primary ml-[-10px]">
-          toryCraft
-        </h1>
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-2">
+          <Image
+            src="/logo5.png"
+            alt="Storycraft"
+            width={32}
+            height={32}
+            className="h-8"
+          />
+          <h1 className="text-3xl font-bold text-primary ml-[-10px]">
+            toryCraft
+          </h1>
+        </div>
+        <ClearProjectButton onClear={clearProject} />
       </div>
       <div className="flex-1 space-y-4">
         <Stepper
           steps={steps}
           currentStep={activeTab}
-          onStepClick={setActiveTab}
+          onStepClick={handleTabChange}
           className="mb-8"
         />
 
         {activeTab === "create" && (
           <CreateTab
             pitch={pitch}
-            setPitch={setPitch}
+            setPitch={handlePitchChange}
             numScenes={numScenes}
-            setNumScenes={setNumScenes}
+            setNumScenes={handleNumScenesChange}
             style={style}
-            setStyle={setStyle}
+            setStyle={handleStyleChange}
             language={language}
-            setLanguage={setLanguage}
+            setLanguage={handleLanguageChange}
             isLoading={isLoading}
             errorMessage={errorMessage}
             onGenerate={handleGenerate}
-            styles={styles}
+            styles={defaultStyles}
+            customStyles={customStyles}
+            onAddCustomStyle={handleAddCustomStyle}
+            onRemoveCustomStyle={handleRemoveCustomStyle}
+            sessionId={state?.projectId || "default"}
           />
         )}
 
@@ -573,8 +595,8 @@ export default function Home() {
             onGenerateStoryBoard={handleGenerateStoryBoard}
             isLoading={isLoading}
             onScenarioUpdate={handleScenarioUpdate}
-            onRegenerateCharacterImage={handleRegenerateCharacterImage}
-            generatingCharacterImages={generatingCharacterImages}
+            sessionId={state?.projectId || "default"}
+            style={style}
           />
         )}
 
@@ -584,11 +606,13 @@ export default function Home() {
             isVideoLoading={isVideoLoading}
             generatingScenes={generatingScenes}
             errorMessage={errorMessage}
+            selectedVeoModel={selectedVeoModel}
             onGenerateAllVideos={handleGenerateAllVideos}
             onUpdateScene={handleUpdateScene}
             onRegenerateImage={handleRegenerateImage}
             onGenerateVideo={handleGenerateVideo}
             onUploadImage={handleUploadImage}
+            onVeoModelChange={handleVeoModelChange}
           />
         )}
 
@@ -599,10 +623,14 @@ export default function Home() {
             onTimeUpdate={setCurrentTime}
             onTimelineItemUpdate={(layerId, itemId, updates) => {
               // TODO: Implement timeline item updates
-              console.log('Timeline item update:', { layerId, itemId, updates })
+              console.log("Timeline item update:", {
+                layerId,
+                itemId,
+                updates,
+              });
             }}
             logoOverlay={logoOverlay}
-            setLogoOverlay={setLogoOverlay}
+            setLogoOverlay={handleLogoOverlayChange}
             onLogoUpload={handleLogoUpload}
             onLogoRemove={handleLogoRemove}
             onGenerateMusic={handleGenerateMusic}
@@ -611,8 +639,6 @@ export default function Home() {
             isGeneratingVoiceover={isGeneratingVoiceover}
             onExportMovie={handleExportMovie}
             isExporting={isVideoLoading}
-            onRemoveVoiceover={handleRemoveVoiceover}
-            onRemoveMusic={handleRemoveMusic}
           />
         )}
 
@@ -633,6 +659,5 @@ export default function Home() {
         </div>
       </footer>
     </main>
-  )
+  );
 }
-

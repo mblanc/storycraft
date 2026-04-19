@@ -1,14 +1,14 @@
 # Configure the Google Cloud provider
 terraform {
-  required_version = ">= 1.0"
+  required_version = ">= 1.14.8"
   required_providers {
     google = {
       source  = "hashicorp/google"
-      version = "~> 5.0"
+      version = "~> 5.45"
     }
     random = {
       source  = "hashicorp/random"
-      version = "~> 3.0"
+      version = "~> 3.8"
     }
   }
 }

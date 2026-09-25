@@ -82,6 +82,7 @@
     },
     "overrides": {
         "@types/react": "19.3.0",
-        "@types/react-dom": "19.3.0"
+        "@types/react-dom": "19.3.0",
+        "uuid": "^14.0.2"
     }
 }

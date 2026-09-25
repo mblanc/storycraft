@@ -126,8 +126,7 @@ export function useTimelineInteractions({
                     : null;
 
             const originalDuration = currentItem.metadata?.originalDuration as
-                | number
-                | undefined;
+                number | undefined;
             const hasTrimmableContent = originalDuration !== undefined;
 
             let currentSnapLine: number | null = null;

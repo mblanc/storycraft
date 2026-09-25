@@ -42,10 +42,27 @@ export function StyleSelector({
     currentStyle,
 }: StyleSelectorProps) {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const [customStyleText, setCustomStyleText] = useState("");
+    const [customStyleText, setCustomStyleText] = useState(() => {
+        const isPreset = styles.some((s) => s.name === currentStyle);
+        if (!isPreset && currentStyle && currentStyle !== "Custom Style") {
+            return currentStyle;
+        }
+        return "";
+    });
+    const [prevCurrentStyle, setPrevCurrentStyle] = useState(currentStyle);
     const [isUploading, setIsUploading] = useState(false);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+    if (prevCurrentStyle !== currentStyle) {
+        setPrevCurrentStyle(currentStyle);
+        const isPreset = styles.some((s) => s.name === currentStyle);
+        if (isPreset) {
+            setCustomStyleText("");
+        } else if (currentStyle && currentStyle !== "Custom Style") {
+            setCustomStyleText(currentStyle);
+        }
+    }
 
     useEffect(() => {
         const resolveUrl = async () => {
@@ -60,18 +77,6 @@ export function StyleSelector({
         };
         resolveUrl();
     }, [styleImageUri]);
-
-    // Sync custom text with currentStyle if it's a custom style
-    useEffect(() => {
-        const isPreset = styles.some((s) => s.name === currentStyle);
-        if (isPreset) {
-            setCustomStyleText("");
-        } else if (currentStyle && currentStyle !== "Custom Style") {
-            // If it's not a preset and not the default "Custom Style" label,
-            // it must be the custom description
-            setCustomStyleText(currentStyle);
-        }
-    }, [currentStyle, styles]);
 
     const handleSelect = (style: Style) => {
         onSelect(style.name);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { Entity } from "@/app/types";
 
 interface UseScenarioItemEditorOptions<T extends Entity> {
@@ -17,25 +17,24 @@ export function useScenarioItemEditor<T extends Entity>({
     const [isEditing, setIsEditing] = useState(initialIsEditing);
     const [editedEntity, setEditedEntity] = useState<T>(entity);
     const [isSaving, setIsSaving] = useState(false);
+    const [prevEntity, setPrevEntity] = useState<T>(entity);
+    const [prevIsEditing, setPrevIsEditing] = useState(isEditing);
 
     // Sync state with props
-    useEffect(() => {
+    if (prevEntity !== entity || prevIsEditing !== isEditing) {
+        setPrevEntity(entity);
+        setPrevIsEditing(isEditing);
         if (!isEditing) {
             setEditedEntity(entity);
-        } else {
+        } else if (editedEntity.imageGcsUri !== entity.imageGcsUri) {
             // If editing, preserve local changes but sync image updates
             // which happen via separate actions (Regenerate/Upload)
-            setEditedEntity((prev) => {
-                if (prev.imageGcsUri !== entity.imageGcsUri) {
-                    return {
-                        ...prev,
-                        imageGcsUri: entity.imageGcsUri,
-                    };
-                }
-                return prev;
+            setEditedEntity({
+                ...editedEntity,
+                imageGcsUri: entity.imageGcsUri,
             });
         }
-    }, [entity, isEditing]);
+    }
 
     const enterEditMode = useCallback(() => {
         setIsEditing(true);

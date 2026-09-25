@@ -2,7 +2,7 @@
 "use server";
 
 import { uploadImage, gcsUriToSharp } from "@/lib/storage/storage";
-import sharp from "sharp";
+import sharp, { type OverlayOptions } from "sharp";
 import { v4 as uuidv4 } from "uuid";
 import logger from "@/app/logger";
 import { createCollageSchema, resizeImageSchema } from "@/app/schemas";
@@ -138,7 +138,7 @@ export async function createCollage(
     });
 
     // Process each item
-    const composites: sharp.OverlayOptions[] = [];
+    const composites: OverlayOptions[] = [];
 
     for (let i = 0; i < items.length; i++) {
         const item = items[i];

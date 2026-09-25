@@ -3,9 +3,7 @@ import { Timestamp } from "@/lib/storage/firestore";
 
 // Type for Firestore timestamps that can be various forms
 export type FirestoreTimestamp =
-    | Timestamp
-    | Date
-    | { seconds: number; nanoseconds: number };
+    Timestamp | Date | { seconds: number; nanoseconds: number };
 
 export interface FirestoreUser {
     email: string;

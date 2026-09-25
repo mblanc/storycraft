@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { clientLogger } from "@/lib/utils/client-logger";
 import { Entity } from "@/app/types";
 
@@ -33,10 +33,12 @@ export function useEntityState<T extends Entity>({
     const [localEntities, setLocalEntities] = useState<T[]>(propEntities);
     const [localLoading, setLocalLoading] = useState<Set<number>>(new Set());
     const [newEntityIndex, setNewEntityIndex] = useState<number | null>(null);
+    const [prevPropEntities, setPrevPropEntities] = useState<T[]>(propEntities);
 
     // Sync localEntities with propEntities when props change,
     // but preserve the new unsaved entity if one is being added.
-    useEffect(() => {
+    if (prevPropEntities !== propEntities) {
+        setPrevPropEntities(propEntities);
         setLocalEntities((prev) => {
             if (newEntityIndex !== null && prev.length > propEntities.length) {
                 const newEntity = prev[prev.length - 1];
@@ -44,7 +46,7 @@ export function useEntityState<T extends Entity>({
             }
             return propEntities;
         });
-    }, [propEntities, newEntityIndex]);
+    }
 
     const isLoading = useCallback(
         (index: number) => {

@@ -1,5 +1,5 @@
 import { GetSignedUrlConfig, Storage } from "@google-cloud/storage";
-import sharp from "sharp";
+import sharp, { type Sharp } from "sharp";
 import logger from "@/app/logger";
 import { env } from "@/lib/utils/env";
 
@@ -122,7 +122,7 @@ export async function getSignedUrlFromGCS(
  * @param gcsUri The Google Cloud Storage URI (e.g., "gs://bucket-name/path/to/image.jpg").
  * @returns A Promise resolving to a sharp instance.
  */
-export async function gcsUriToSharp(gcsUri: string): Promise<sharp.Sharp> {
+export async function gcsUriToSharp(gcsUri: string): Promise<Sharp> {
     try {
         // 1. Parse the GCS URI to extract bucket name and file path
         const match = gcsUri.match(/^gs:\/\/([^\/]+)\/(.+)$/);

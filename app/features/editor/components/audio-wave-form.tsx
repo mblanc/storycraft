@@ -43,14 +43,18 @@ export function AudioWaveform({
     const mountedRef = useRef(true);
 
     // Store committed values that only update when NOT resizing
-    const committedValuesRef = useRef({ duration, trimStart });
+    const [committedValues, setCommittedValues] = useState({
+        duration,
+        trimStart,
+    });
 
-    // Only update committed values when resize ends
-    useEffect(() => {
-        if (!isResizing) {
-            committedValuesRef.current = { duration, trimStart };
-        }
-    }, [isResizing, duration, trimStart]);
+    if (
+        !isResizing &&
+        (committedValues.duration !== duration ||
+            committedValues.trimStart !== trimStart)
+    ) {
+        setCommittedValues({ duration, trimStart });
+    }
 
     // Extract waveform for the FULL audio once
     const extractFullWaveform = useCallback(
@@ -147,32 +151,35 @@ export function AudioWaveform({
     useEffect(() => {
         mountedRef.current = true;
 
-        if (!src) {
-            setIsLoading(false);
-            return;
-        }
+        const loadWaveform = async () => {
+            if (!src) {
+                setIsLoading(false);
+                return;
+            }
 
-        // Check if already cached
-        if (waveformCache.has(src)) {
-            setWaveformData(waveformCache.get(src)!);
-            setIsLoading(false);
-            return;
-        }
+            // Check if already cached
+            if (waveformCache.has(src)) {
+                setWaveformData(waveformCache.get(src)!);
+                setIsLoading(false);
+                return;
+            }
 
-        setIsLoading(true);
+            setIsLoading(true);
 
-        extractFullWaveform(src)
-            .then((data) => {
+            try {
+                const data = await extractFullWaveform(src);
                 if (mountedRef.current) {
                     setWaveformData(data);
                     setIsLoading(false);
                 }
-            })
-            .catch(() => {
+            } catch {
                 if (mountedRef.current) {
                     setIsLoading(false);
                 }
-            });
+            }
+        };
+
+        void loadWaveform();
 
         return () => {
             mountedRef.current = false;
@@ -193,11 +200,9 @@ export function AudioWaveform({
         }
 
         // Use committed values during resize, current values otherwise
-        const stableDuration = isResizing
-            ? committedValuesRef.current.duration
-            : duration;
+        const stableDuration = isResizing ? committedValues.duration : duration;
         const stableTrimStart = isResizing
-            ? committedValuesRef.current.trimStart
+            ? committedValues.trimStart
             : trimStart;
 
         // Calculate how many bars to display based on STABLE duration
@@ -237,7 +242,14 @@ export function AudioWaveform({
         }
 
         return { visibleBars: result, barStripStyle: stripStyle };
-    }, [waveformData, trimStart, duration, originalDuration, isResizing]);
+    }, [
+        waveformData,
+        trimStart,
+        duration,
+        originalDuration,
+        isResizing,
+        committedValues,
+    ]);
 
     // Use same calculation for loading placeholder
     const loadingBarCount = Math.max(
@@ -256,7 +268,7 @@ export function AudioWaveform({
                             key={index}
                             className={`${color} flex-1 animate-pulse rounded-sm opacity-30`}
                             style={{
-                                height: `${30 + Math.random() * 40}%`,
+                                height: `${30 + ((index * 37) % 41)}%`,
                                 animationDelay: `${index * 0.05}s`,
                             }}
                         />

@@ -43,14 +43,18 @@ export function VideoThumbnail({
     const mountedRef = useRef(true);
 
     // Store committed values that only update when NOT resizing
-    const committedValuesRef = useRef({ duration, trimStart });
+    const [committedValues, setCommittedValues] = useState({
+        duration,
+        trimStart,
+    });
 
-    // Only update committed values when resize ends
-    useEffect(() => {
-        if (!isResizing) {
-            committedValuesRef.current = { duration, trimStart };
-        }
-    }, [isResizing, duration, trimStart]);
+    if (
+        !isResizing &&
+        (committedValues.duration !== duration ||
+            committedValues.trimStart !== trimStart)
+    ) {
+        setCommittedValues({ duration, trimStart });
+    }
 
     // Extract ALL thumbnails for the entire video once
     const extractAllThumbnails = useCallback(
@@ -199,24 +203,25 @@ export function VideoThumbnail({
     useEffect(() => {
         mountedRef.current = true;
 
-        if (!src) {
-            setIsLoading(false);
-            setHasError(true);
-            return;
-        }
+        const loadThumbnails = async () => {
+            if (!src) {
+                setIsLoading(false);
+                setHasError(true);
+                return;
+            }
 
-        // Check if already cached - no loading state needed
-        if (thumbnailCache.has(src)) {
-            setThumbnailData(thumbnailCache.get(src)!);
-            setIsLoading(false);
-            return;
-        }
+            // Check if already cached - no loading state needed
+            if (thumbnailCache.has(src)) {
+                setThumbnailData(thumbnailCache.get(src)!);
+                setIsLoading(false);
+                return;
+            }
 
-        setIsLoading(true);
-        setHasError(false);
+            setIsLoading(true);
+            setHasError(false);
 
-        extractAllThumbnails(src)
-            .then((data) => {
+            try {
+                const data = await extractAllThumbnails(src);
                 if (mountedRef.current) {
                     setThumbnailData(data);
                     setIsLoading(false);
@@ -224,13 +229,15 @@ export function VideoThumbnail({
                         setHasError(true);
                     }
                 }
-            })
-            .catch(() => {
+            } catch {
                 if (mountedRef.current) {
                     setHasError(true);
                     setIsLoading(false);
                 }
-            });
+            }
+        };
+
+        void loadThumbnails();
 
         return () => {
             mountedRef.current = false;
@@ -251,11 +258,9 @@ export function VideoThumbnail({
         }
 
         // Use committed values during resize, current values otherwise
-        const stableDuration = isResizing
-            ? committedValuesRef.current.duration
-            : duration;
+        const stableDuration = isResizing ? committedValues.duration : duration;
         const stableTrimStart = isResizing
-            ? committedValuesRef.current.trimStart
+            ? committedValues.trimStart
             : trimStart;
 
         // Calculate how many thumbnails based on STABLE duration
@@ -287,7 +292,6 @@ export function VideoThumbnail({
         if (isResizing) {
             // Calculate how much the visible window has shifted
             const currentTrimStart = trimStart;
-            const stableTrimStart = committedValuesRef.current.trimStart;
             const trimDelta = currentTrimStart - stableTrimStart;
 
             // Calculate the pixel offset based on how much time shifted
@@ -301,7 +305,14 @@ export function VideoThumbnail({
         }
 
         return { visibleThumbnails: result, thumbnailStripStyle: stripStyle };
-    }, [thumbnailData, trimStart, duration, originalDuration, isResizing]);
+    }, [
+        thumbnailData,
+        trimStart,
+        duration,
+        originalDuration,
+        isResizing,
+        committedValues,
+    ]);
 
     if (hasError) {
         return (

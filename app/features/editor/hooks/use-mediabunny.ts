@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     Input,
     UrlSource,
@@ -96,7 +96,6 @@ export function useMediabunny({
     const [thumbnails] = useState<Map<string, ThumbnailData>>(new Map());
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
-    const [totalDuration, setTotalDuration] = useState(0);
     const [isInitializing, setIsInitializing] = useState(true);
     const [isReady, setIsReady] = useState(false);
 
@@ -336,12 +335,13 @@ export function useMediabunny({
     );
 
     // Calculate total duration from video layer
-    useEffect(() => {
+    const totalDuration = useMemo(() => {
         const videoLayer = layers.find((l) => l.type === "video");
         if (videoLayer && videoLayer.items.length > 0) {
             const lastItem = videoLayer.items[videoLayer.items.length - 1];
-            setTotalDuration(lastItem.startTime + lastItem.duration);
+            return lastItem.startTime + lastItem.duration;
         }
+        return 0;
     }, [layers]);
 
     // Initialize video sources

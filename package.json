@@ -60,7 +60,7 @@
     },
     "devDependencies": {
         "@playwright/test": "^1.63.0",
-        "@testing-library/jest-dom": "^6.9.1",
+        "@testing-library/jest-dom": "^7.0.1",
         "@testing-library/react": "^16.3.3",
         "@types/lodash": "^4.17.25",
         "@types/node": "^25.9.8",
